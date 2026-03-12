@@ -1,0 +1,64 @@
+# .NET
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.cache
+*.dll
+*.pdb
+*.mdf
+*.ldf
+*.nupkg
+project.lock.json
+.vs/
+packages/
+*.nuget.props
+*.nuget.targets
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+.sass-cache/
+npm-debug.log*
+yarn-error.log*
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+publish/
+out/
+
+# Docker
+.docker/
+
+# Azure
+.azure/
+
+# Uploads (local dev storage)
+uploads/
