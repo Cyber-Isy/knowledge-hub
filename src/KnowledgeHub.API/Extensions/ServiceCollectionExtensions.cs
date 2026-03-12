@@ -1,5 +1,8 @@
 using System.Text;
+using System.Threading.Channels;
 using KnowledgeHub.API.Configuration;
+using KnowledgeHub.Core.Configuration;
+using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Interfaces.Repositories;
 using KnowledgeHub.Core.Interfaces.Services;
 using KnowledgeHub.Infrastructure.Data;
@@ -119,11 +122,66 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Repositories
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddSingleton<IFileStorageService>(new LocalFileStorageService("uploads"));
+
+        // Text extraction
+        services.AddSingleton<IDocumentTextExtractor, PdfTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, DocxTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, PlainTextExtractor>();
+        services.AddSingleton<DocumentTextExtractorFactory>();
+
+        // Text chunking
+        services.AddSingleton<ITextChunker, RecursiveTextChunker>();
+
+        // Azure OpenAI Embeddings
+        var azureOpenAI = configuration.GetSection("AzureOpenAI");
+        var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
+        var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
+        var embeddingDeployment = azureOpenAI["EmbeddingDeploymentName"] ?? "text-embedding-3-small";
+
+        services.AddSingleton<IEmbeddingService>(sp =>
+            new AzureOpenAIEmbeddingService(
+                endpoint, apiKey, embeddingDeployment,
+                sp.GetRequiredService<ILogger<AzureOpenAIEmbeddingService>>()));
+
+        // Azure AI Search (vector store)
+        var azureSearch = configuration.GetSection("AzureAISearch");
+        var searchEndpoint = azureSearch["Endpoint"] ?? string.Empty;
+        var searchApiKey = azureSearch["ApiKey"] ?? string.Empty;
+        var indexName = azureSearch["IndexName"] ?? "knowledgehub-chunks";
+
+        services.AddSingleton<IVectorSearchService>(sp =>
+            new AzureAISearchService(
+                searchEndpoint, searchApiKey, indexName,
+                sp.GetRequiredService<ILogger<AzureAISearchService>>()));
+
+        // Document processing pipeline
+        services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
+        services.AddSingleton(Channel.CreateUnbounded<Guid>());
+        services.AddSingleton<DocumentProcessingBackgroundService>();
+        services.AddHostedService(sp => sp.GetRequiredService<DocumentProcessingBackgroundService>());
+
+        // Chat
+        services.Configure<ChatSettings>(configuration.GetSection(ChatSettings.SectionName));
+        var chatDeployment = azureOpenAI["ChatDeploymentName"] ?? "gpt-4o";
+        services.AddScoped<IChatService>(sp =>
+            new ChatService(
+                endpoint, apiKey, chatDeployment,
+                sp.GetRequiredService<IEmbeddingService>(),
+                sp.GetRequiredService<IVectorSearchService>(),
+                sp.GetRequiredService<IRepository<Conversation>>(),
+                sp.GetRequiredService<IRepository<Message>>(),
+                sp.GetRequiredService<IRepository<MessageSource>>(),
+                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatSettings>>(),
+                sp.GetRequiredService<ILogger<ChatService>>()));
+
+        // SignalR
+        services.AddSignalR();
 
         return services;
     }

@@ -4,6 +4,7 @@ using KnowledgeHub.API.DTOs;
 using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Interfaces.Repositories;
 using KnowledgeHub.Core.Interfaces.Services;
+using KnowledgeHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,13 +17,16 @@ public class DocumentsController : ControllerBase
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly DocumentProcessingBackgroundService _backgroundService;
 
     public DocumentsController(
         IDocumentRepository documentRepository,
-        IFileStorageService fileStorageService)
+        IFileStorageService fileStorageService,
+        DocumentProcessingBackgroundService backgroundService)
     {
         _documentRepository = documentRepository;
         _fileStorageService = fileStorageService;
+        _backgroundService = backgroundService;
     }
 
     [HttpPost("upload")]
@@ -53,6 +57,8 @@ public class DocumentsController : ControllerBase
         };
 
         await _documentRepository.AddAsync(document, ct);
+
+        await _backgroundService.EnqueueAsync(document.Id, ct);
 
         return CreatedAtAction(nameof(GetById), new { id = document.Id }, ToDto(document));
     }

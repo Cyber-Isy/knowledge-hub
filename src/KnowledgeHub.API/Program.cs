@@ -1,4 +1,5 @@
 using KnowledgeHub.API.Extensions;
+using KnowledgeHub.API.Hubs;
 using KnowledgeHub.API.Middleware;
 using KnowledgeHub.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddIdentityServices();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddCorsPolicies();
 
 var app = builder.Build();
@@ -39,5 +40,6 @@ app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
