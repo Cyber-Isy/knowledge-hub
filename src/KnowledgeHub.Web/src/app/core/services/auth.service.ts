@@ -8,6 +8,7 @@ export interface User {
   email: string;
   displayName?: string;
   createdAt: string;
+  roles: string[];
 }
 
 export interface AuthResponse {
@@ -35,6 +36,7 @@ export class AuthService {
 
   currentUser = signal<User | null>(null);
   isAuthenticated = computed(() => !!this.currentUser());
+  isAdmin = computed(() => this.currentUser()?.roles?.includes('Admin') ?? false);
   isLoading = signal(false);
 
   constructor(
@@ -46,12 +48,12 @@ export class AuthService {
 
   login(request: LoginRequest) {
     this.isLoading.set(true);
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, request);
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/v1/auth/login`, request);
   }
 
   register(request: RegisterRequest) {
     this.isLoading.set(true);
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, request);
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/v1/auth/register`, request);
   }
 
   handleAuthResponse(response: AuthResponse) {
@@ -73,7 +75,7 @@ export class AuthService {
     const token = this.getToken();
     if (!token) return;
 
-    this.http.get<User>(`${environment.apiUrl}/auth/me`).subscribe({
+    this.http.get<User>(`${environment.apiUrl}/v1/auth/me`).subscribe({
       next: (user) => {
         this.currentUser.set(user);
         this.isLoading.set(false);

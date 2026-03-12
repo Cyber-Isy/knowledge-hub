@@ -1,19 +1,23 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Asp.Versioning;
 using KnowledgeHub.API.Configuration;
 using KnowledgeHub.API.DTOs;
 using KnowledgeHub.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace KnowledgeHub.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -46,7 +50,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { Errors = result.Errors.Select(e => e.Description) });
         }
 
-        return Ok(GenerateAuthResponse(user));
+        return Ok(await GenerateAuthResponse(user));
     }
 
     [HttpPost("login")]
@@ -60,7 +64,7 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return Unauthorized(new { Message = "Invalid email or password." });
 
-        return Ok(GenerateAuthResponse(user));
+        return Ok(await GenerateAuthResponse(user));
     }
 
     [Authorize]
@@ -75,25 +79,34 @@ public class AuthController : ControllerBase
         if (user is null)
             return NotFound();
 
+        var roles = await _userManager.GetRolesAsync(user);
+
         return Ok(new UserInfoResponse
         {
             Id = user.Id,
             Email = user.Email!,
             DisplayName = user.DisplayName,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            Roles = roles.ToList()
         });
     }
 
-    private AuthResponse GenerateAuthResponse(ApplicationUser user)
+    private async Task<AuthResponse> GenerateAuthResponse(ApplicationUser user)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        var roles = await _userManager.GetRolesAsync(user);
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

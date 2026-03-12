@@ -124,7 +124,7 @@ export class ChatService {
 
   loadConversations(): void {
     this.isLoadingConversations.set(true);
-    this.http.get<Conversation[]>(`${environment.apiUrl}/conversations`).subscribe({
+    this.http.get<Conversation[]>(`${environment.apiUrl}/v1/chat/conversations`).subscribe({
       next: (convos) => {
         this.conversations.set(convos);
         this.isLoadingConversations.set(false);
@@ -137,7 +137,7 @@ export class ChatService {
     this.isLoadingMessages.set(true);
     this.activeConversationId.set(conversationId);
     this.http
-      .get<ChatMessage[]>(`${environment.apiUrl}/conversations/${conversationId}/messages`)
+      .get<ChatMessage[]>(`${environment.apiUrl}/v1/chat/conversations/${conversationId}/messages`)
       .subscribe({
         next: (msgs) => {
           this.messages.set(msgs);
@@ -175,7 +175,7 @@ export class ChatService {
         // Fallback to REST if SignalR not connected
         this.http
           .post<{ conversationId: string; message: ChatMessage }>(
-            `${environment.apiUrl}/chat/send`,
+            `${environment.apiUrl}/v1/chat/send`,
             {
               conversationId: this.activeConversationId(),
               message: content.trim(),
@@ -206,7 +206,7 @@ export class ChatService {
   }
 
   renameConversation(id: string, title: string): void {
-    this.http.put(`${environment.apiUrl}/conversations/${id}`, { title }).subscribe({
+    this.http.put(`${environment.apiUrl}/v1/chat/conversations/${id}`, { title }).subscribe({
       next: () => {
         this.conversations.update((convos) =>
           convos.map((c) => (c.id === id ? { ...c, title } : c)),
@@ -216,7 +216,7 @@ export class ChatService {
   }
 
   deleteConversation(id: string): void {
-    this.http.delete(`${environment.apiUrl}/conversations/${id}`).subscribe({
+    this.http.delete(`${environment.apiUrl}/v1/chat/conversations/${id}`).subscribe({
       next: () => {
         this.conversations.update((convos) => convos.filter((c) => c.id !== id));
         if (this.activeConversationId() === id) {

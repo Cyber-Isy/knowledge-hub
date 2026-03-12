@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Interfaces.Repositories;
+using KnowledgeHub.Core.Models;
 using KnowledgeHub.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,4 +50,29 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         => predicate is null
             ? await DbSet.CountAsync(ct)
             : await DbSet.CountAsync(predicate, ct);
+
+    public async Task<PagedResult<T>> GetPagedAsync(
+        PaginationParams pagination, Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default)
+    {
+        var query = DbSet.AsNoTracking();
+
+        if (predicate is not null)
+            query = query.Where(predicate);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<T>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
+        };
+    }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Azure;
 using Azure.AI.OpenAI;
@@ -66,18 +67,28 @@ public class ChatService : IChatService
         await _messageRepository.AddAsync(userMessage, ct);
 
         // Embed user query and search for relevant chunks
+        var embeddingStopwatch = Stopwatch.StartNew();
         var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(content, ct);
-        var searchResults = await _vectorSearchService.SearchAsync(queryEmbedding, _settings.MaxContextChunks, ct);
+        embeddingStopwatch.Stop();
+        _logger.LogInformation("Embedding generation completed in {ElapsedMs}ms", embeddingStopwatch.ElapsedMilliseconds);
 
-        _logger.LogDebug("Found {Count} relevant chunks for query", searchResults.Count);
+        var searchStopwatch = Stopwatch.StartNew();
+        var searchResults = await _vectorSearchService.SearchAsync(queryEmbedding, _settings.MaxContextChunks, ct);
+        searchStopwatch.Stop();
+        _logger.LogInformation("Vector search completed in {ElapsedMs}ms, found {Count} results",
+            searchStopwatch.ElapsedMilliseconds, searchResults.Count);
 
         // Build messages for the chat completion
         var chatMessages = BuildChatMessages(content, searchResults);
 
         // Call Azure OpenAI
+        var completionStopwatch = Stopwatch.StartNew();
         var completion = await _chatClient.CompleteChatAsync(chatMessages, cancellationToken: ct);
+        completionStopwatch.Stop();
         var responseContent = completion.Value.Content[0].Text;
         var tokensUsed = completion.Value.Usage.TotalTokenCount;
+        _logger.LogInformation("Chat completion finished in {ElapsedMs}ms, {TokensUsed} tokens used",
+            completionStopwatch.ElapsedMilliseconds, tokensUsed);
 
         // Save assistant response
         var assistantMessage = new Message

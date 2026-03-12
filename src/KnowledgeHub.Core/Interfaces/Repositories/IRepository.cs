@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using KnowledgeHub.Core.Entities;
+using KnowledgeHub.Core.Models;
 
 namespace KnowledgeHub.Core.Interfaces.Repositories;
 
@@ -12,4 +13,5 @@ public interface IRepository<T> where T : BaseEntity
     Task UpdateAsync(T entity, CancellationToken ct = default);
     Task DeleteAsync(T entity, CancellationToken ct = default);
     Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default);
+    Task<PagedResult<T>> GetPagedAsync(PaginationParams pagination, Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default);
 }

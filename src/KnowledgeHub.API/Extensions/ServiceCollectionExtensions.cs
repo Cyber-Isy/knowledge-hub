@@ -1,5 +1,10 @@
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Channels;
+using System.Threading.RateLimiting;
+using Asp.Versioning;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using KnowledgeHub.API.Configuration;
 using KnowledgeHub.Core.Configuration;
 using KnowledgeHub.Core.Entities;
@@ -10,6 +15,7 @@ using KnowledgeHub.Infrastructure.Repositories;
 using KnowledgeHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -66,7 +72,8 @@ public static class ServiceCollectionExtensions
                     ValidIssuer = jwtSettings.Issuer,
                     ValidAudience = jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.Zero,
+                    RoleClaimType = ClaimTypes.Role
                 };
 
                 // Allow SignalR to receive JWT from query string
@@ -197,6 +204,91 @@ public static class ServiceCollectionExtensions
                     .AllowAnyMethod()
                     .AllowCredentials();
             });
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddFluentValidationServices(this IServiceCollection services)
+    {
+        services.AddFluentValidationAutoValidation();
+        services.AddValidatorsFromAssemblyContaining<Program>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddRateLimitingPolicies(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                {
+                    context.HttpContext.Response.Headers.RetryAfter =
+                        ((int)retryAfter.TotalSeconds).ToString();
+                }
+
+                context.HttpContext.Response.ContentType = "application/json";
+                await context.HttpContext.Response.WriteAsJsonAsync(new
+                {
+                    Title = "Too Many Requests",
+                    Status = 429,
+                    Detail = "Rate limit exceeded. Please try again later."
+                }, cancellationToken);
+            };
+
+            // Auth endpoints: 10 requests/minute, partitioned by IP
+            options.AddPolicy("auth", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+
+            // Upload endpoints: 20 requests/hour, partitioned by user claim
+            options.AddPolicy("upload", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 20,
+                        Window = TimeSpan.FromHours(1),
+                        QueueLimit = 0
+                    }));
+
+            // Chat endpoints: 60 requests/hour, partitioned by user claim
+            options.AddPolicy("chat", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 60,
+                        Window = TimeSpan.FromHours(1),
+                        QueueLimit = 0
+                    }));
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddApiVersioningServices(this IServiceCollection services)
+    {
+        services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        }).AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
         });
 
         return services;

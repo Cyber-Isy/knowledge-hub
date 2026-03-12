@@ -1,0 +1,111 @@
+{
+  "APP": {
+    "TITLE": "KnowledgeHub"
+  },
+  "HEADER": {
+    "LOGOUT": "Abmelden"
+  },
+  "SIDEBAR": {
+    "DASHBOARD": "Dashboard",
+    "DOCUMENTS": "Dokumente",
+    "CHAT": "Chat"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Willkommen zurück",
+      "SUBTITLE": "Melden Sie sich bei KnowledgeHub an",
+      "EMAIL_LABEL": "E-Mail",
+      "EMAIL_PLACEHOLDER": "name@beispiel.ch",
+      "PASSWORD_LABEL": "Passwort",
+      "PASSWORD_PLACEHOLDER": "••••••••",
+      "SUBMIT": "Anmelden",
+      "SUBMITTING": "Anmeldung läuft...",
+      "NO_ACCOUNT": "Noch kein Konto?",
+      "SIGN_UP": "Registrieren",
+      "ERROR_DEFAULT": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "REGISTER": {
+      "TITLE": "Konto erstellen",
+      "SUBTITLE": "Starten Sie mit KnowledgeHub",
+      "DISPLAY_NAME_LABEL": "Anzeigename",
+      "DISPLAY_NAME_PLACEHOLDER": "Max Muster",
+      "EMAIL_LABEL": "E-Mail",
+      "EMAIL_PLACEHOLDER": "name@beispiel.ch",
+      "PASSWORD_LABEL": "Passwort",
+      "PASSWORD_PLACEHOLDER": "Min. 8 Zeichen",
+      "CONFIRM_PASSWORD_LABEL": "Passwort bestätigen",
+      "CONFIRM_PASSWORD_PLACEHOLDER": "Passwort wiederholen",
+      "SUBMIT": "Konto erstellen",
+      "SUBMITTING": "Konto wird erstellt...",
+      "HAS_ACCOUNT": "Bereits ein Konto?",
+      "SIGN_IN": "Anmelden",
+      "PASSWORD_MISMATCH": "Passwörter stimmen nicht überein.",
+      "ERROR_DEFAULT": "Registrierung fehlgeschlagen."
+    }
+  },
+  "DASHBOARD": {
+    "TITLE": "Dashboard",
+    "WELCOME": "Willkommen",
+    "DOCUMENTS": "Dokumente",
+    "CONVERSATIONS": "Unterhaltungen"
+  },
+  "DOCUMENTS": {
+    "TITLE": "Dokumente",
+    "UPLOAD_HINT": "Dateien hierher ziehen oder klicken zum Durchsuchen",
+    "UPLOAD_FORMATS": "PDF, DOCX, TXT, MD — Max. 10 MB",
+    "UPLOADING": "Wird hochgeladen...",
+    "LOADING": "Dokumente werden geladen...",
+    "EMPTY_TITLE": "Noch keine Dokumente",
+    "EMPTY_SUBTITLE": "Laden Sie Ihr erstes Dokument hoch, um zu beginnen",
+    "TABLE": {
+      "NAME": "Name",
+      "SIZE": "Grösse",
+      "STATUS": "Status",
+      "ACTIONS": "Aktionen"
+    },
+    "DELETE": "Löschen",
+    "STATUS": {
+      "UPLOADED": "Hochgeladen",
+      "PROCESSING": "Verarbeitung",
+      "READY": "Bereit",
+      "FAILED": "Fehlgeschlagen"
+    }
+  },
+  "CHAT": {
+    "NEW_CHAT": "Neuer Chat",
+    "INPUT_PLACEHOLDER": "Stellen Sie eine Frage zu Ihren Dokumenten...",
+    "SEND": "Senden",
+    "THINKING": "Denke nach",
+    "LOADING_MESSAGES": "Nachrichten werden geladen...",
+    "EMPTY_TITLE": "Unterhaltung beginnen",
+    "EMPTY_SUBTITLE": "Stellen Sie eine Frage zu Ihren hochgeladenen Dokumenten",
+    "SOURCES": "Quellen",
+    "SIDEBAR": {
+      "NEW_CHAT": "Neuer Chat",
+      "LOADING": "Wird geladen...",
+      "EMPTY": "Noch keine Unterhaltungen",
+      "RENAME": "Umbenennen",
+      "DELETE": "Löschen"
+    }
+  },
+  "COMMON": {
+    "SAVE": "Speichern",
+    "CANCEL": "Abbrechen",
+    "DELETE": "Löschen",
+    "EDIT": "Bearbeiten",
+    "CLOSE": "Schliessen",
+    "CONFIRM": "Bestätigen",
+    "LOADING": "Wird geladen...",
+    "ERROR": "Ein Fehler ist aufgetreten",
+    "SUCCESS": "Erfolgreich",
+    "YES": "Ja",
+    "NO": "Nein"
+  },
+  "LANGUAGE": {
+    "LABEL": "Sprache",
+    "EN": "English",
+    "DE": "Deutsch",
+    "FR": "Français",
+    "IT": "Italiano"
+  }
+}

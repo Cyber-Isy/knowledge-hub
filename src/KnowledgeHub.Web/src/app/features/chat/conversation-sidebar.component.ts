@@ -1,38 +1,39 @@
 import { Component, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import { Conversation } from '../../core/services/chat.service';
 
 @Component({
   selector: 'app-conversation-sidebar',
-  imports: [FormsModule],
+  imports: [FormsModule, TranslateModule],
   template: `
-    <aside class="w-72 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
+    <aside class="w-72 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-border)] flex flex-col h-full">
       <!-- New chat button -->
       <div class="p-3">
         <button
           (click)="newConversation.emit()"
-          class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+          class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-bg)] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          New Chat
+          {{ 'CHAT.SIDEBAR.NEW_CHAT' | translate }}
         </button>
       </div>
 
       <!-- Conversation list -->
       <div class="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
         @if (isLoading()) {
-          <div class="py-8 text-center text-xs text-gray-400">Loading...</div>
+          <div class="py-8 text-center text-xs text-[var(--color-text-secondary)]">{{ 'CHAT.SIDEBAR.LOADING' | translate }}</div>
         } @else if (conversations().length === 0) {
-          <div class="py-8 text-center text-xs text-gray-400">No conversations yet</div>
+          <div class="py-8 text-center text-xs text-[var(--color-text-secondary)]">{{ 'CHAT.SIDEBAR.EMPTY' | translate }}</div>
         } @else {
           @for (convo of conversations(); track convo.id) {
             <div
               class="group relative flex items-center rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors"
               [class]="convo.id === activeConversationId()
-                ? 'bg-indigo-50 text-indigo-700'
-                : 'text-gray-700 hover:bg-gray-100'"
+                ? 'bg-indigo-50 text-indigo-700 [html[data-theme=dark]_&]:bg-indigo-950 [html[data-theme=dark]_&]:text-indigo-300'
+                : 'text-[var(--color-text)] hover:bg-[var(--color-hover)]'"
               (click)="onSelect(convo.id)"
             >
               @if (editingId() === convo.id) {
@@ -42,7 +43,7 @@ import { Conversation } from '../../core/services/chat.service';
                   (keydown.enter)="confirmRename(convo.id)"
                   (keydown.escape)="cancelRename()"
                   (blur)="confirmRename(convo.id)"
-                  class="flex-1 text-sm bg-white border border-indigo-300 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-indigo-500"
+                  class="flex-1 text-sm bg-[var(--color-input-bg)] border border-[var(--color-primary)] rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-[var(--color-primary)] text-[var(--color-text)]"
                   (click)="$event.stopPropagation()"
                 />
               } @else {
@@ -52,8 +53,8 @@ import { Conversation } from '../../core/services/chat.service';
                 <div class="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-2">
                   <button
                     (click)="startRename($event, convo)"
-                    class="p-1 rounded hover:bg-white/80 text-gray-400 hover:text-gray-600"
-                    title="Rename"
+                    class="p-1 rounded hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)]"
+                    [title]="'CHAT.SIDEBAR.RENAME' | translate"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
@@ -61,8 +62,8 @@ import { Conversation } from '../../core/services/chat.service';
                   </button>
                   <button
                     (click)="onDelete($event, convo.id)"
-                    class="p-1 rounded hover:bg-white/80 text-gray-400 hover:text-red-600"
-                    title="Delete"
+                    class="p-1 rounded hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-error)]"
+                    [title]="'CHAT.SIDEBAR.DELETE' | translate"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -121,7 +122,6 @@ export class ConversationSidebarComponent {
       this.confirmingDeleteId.set(null);
     } else {
       this.confirmingDeleteId.set(id);
-      // Reset confirmation after 3 seconds
       setTimeout(() => {
         if (this.confirmingDeleteId() === id) {
           this.confirmingDeleteId.set(null);

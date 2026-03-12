@@ -6,12 +6,13 @@ import {
   ElementRef,
   effect,
 } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ChatMessage, Citation } from '../../core/services/chat.service';
 import { CitationCardComponent } from './citation-card.component';
 
 @Component({
   selector: 'app-message-list',
-  imports: [CitationCardComponent],
+  imports: [CitationCardComponent, TranslateModule],
   template: `
     <div #scrollContainer class="h-full overflow-y-auto">
       <div class="max-w-3xl mx-auto py-6 px-4 space-y-6">
@@ -21,7 +22,7 @@ import { CitationCardComponent } from './citation-card.component';
               <span class="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></span>
               <span class="h-2 w-2 rounded-full bg-gray-300 animate-pulse [animation-delay:150ms]"></span>
               <span class="h-2 w-2 rounded-full bg-gray-300 animate-pulse [animation-delay:300ms]"></span>
-              <span class="text-sm ml-1">Loading messages...</span>
+              <span class="text-sm ml-1">{{ 'CHAT.LOADING_MESSAGES' | translate }}</span>
             </div>
           </div>
         } @else if (messages().length === 0 && !isStreaming()) {
@@ -29,8 +30,8 @@ import { CitationCardComponent } from './citation-card.component';
             <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
             </svg>
-            <p class="text-lg font-medium mb-1">Start a conversation</p>
-            <p class="text-sm">Ask a question about your uploaded documents</p>
+            <p class="text-lg font-medium mb-1">{{ 'CHAT.EMPTY_TITLE' | translate }}</p>
+            <p class="text-sm">{{ 'CHAT.EMPTY_SUBTITLE' | translate }}</p>
           </div>
         } @else {
           @for (message of messages(); track message.id) {
@@ -48,7 +49,7 @@ import { CitationCardComponent } from './citation-card.component';
 
                 @if (message.citations && message.citations.length > 0) {
                   <div class="mt-3 pt-3 border-t border-gray-100 space-y-2">
-                    <p class="text-xs font-medium text-gray-500">Sources</p>
+                    <p class="text-xs font-medium text-gray-500">{{ 'CHAT.SOURCES' | translate }}</p>
                     @for (citation of message.citations; track $index) {
                       <app-citation-card [citation]="citation" />
                     }
@@ -66,7 +67,7 @@ import { CitationCardComponent } from './citation-card.component';
 
                 @if (streamingCitations().length > 0) {
                   <div class="mt-3 pt-3 border-t border-gray-100 space-y-2">
-                    <p class="text-xs font-medium text-gray-500">Sources</p>
+                    <p class="text-xs font-medium text-gray-500">{{ 'CHAT.SOURCES' | translate }}</p>
                     @for (citation of streamingCitations(); track $index) {
                       <app-citation-card [citation]="citation" />
                     }

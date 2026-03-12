@@ -1,0 +1,111 @@
+{
+  "APP": {
+    "TITLE": "KnowledgeHub"
+  },
+  "HEADER": {
+    "LOGOUT": "Disconnetti"
+  },
+  "SIDEBAR": {
+    "DASHBOARD": "Dashboard",
+    "DOCUMENTS": "Documenti",
+    "CHAT": "Chat"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Bentornato",
+      "SUBTITLE": "Accedi a KnowledgeHub",
+      "EMAIL_LABEL": "E-mail",
+      "EMAIL_PLACEHOLDER": "nome@esempio.com",
+      "PASSWORD_LABEL": "Password",
+      "PASSWORD_PLACEHOLDER": "••••••••",
+      "SUBMIT": "Accedi",
+      "SUBMITTING": "Accesso in corso...",
+      "NO_ACCOUNT": "Non hai un account?",
+      "SIGN_UP": "Registrati",
+      "ERROR_DEFAULT": "Accesso non riuscito. Riprova."
+    },
+    "REGISTER": {
+      "TITLE": "Crea account",
+      "SUBTITLE": "Inizia con KnowledgeHub",
+      "DISPLAY_NAME_LABEL": "Nome visualizzato",
+      "DISPLAY_NAME_PLACEHOLDER": "Mario Rossi",
+      "EMAIL_LABEL": "E-mail",
+      "EMAIL_PLACEHOLDER": "nome@esempio.com",
+      "PASSWORD_LABEL": "Password",
+      "PASSWORD_PLACEHOLDER": "Min. 8 caratteri",
+      "CONFIRM_PASSWORD_LABEL": "Conferma password",
+      "CONFIRM_PASSWORD_PLACEHOLDER": "Ripeti password",
+      "SUBMIT": "Crea account",
+      "SUBMITTING": "Creazione account...",
+      "HAS_ACCOUNT": "Hai già un account?",
+      "SIGN_IN": "Accedi",
+      "PASSWORD_MISMATCH": "Le password non corrispondono.",
+      "ERROR_DEFAULT": "Registrazione non riuscita."
+    }
+  },
+  "DASHBOARD": {
+    "TITLE": "Dashboard",
+    "WELCOME": "Benvenuto",
+    "DOCUMENTS": "Documenti",
+    "CONVERSATIONS": "Conversazioni"
+  },
+  "DOCUMENTS": {
+    "TITLE": "Documenti",
+    "UPLOAD_HINT": "Trascina i file qui o clicca per sfogliare",
+    "UPLOAD_FORMATS": "PDF, DOCX, TXT, MD — Max 10 MB",
+    "UPLOADING": "Caricamento in corso...",
+    "LOADING": "Caricamento documenti...",
+    "EMPTY_TITLE": "Nessun documento",
+    "EMPTY_SUBTITLE": "Carica il tuo primo documento per iniziare",
+    "TABLE": {
+      "NAME": "Nome",
+      "SIZE": "Dimensione",
+      "STATUS": "Stato",
+      "ACTIONS": "Azioni"
+    },
+    "DELETE": "Elimina",
+    "STATUS": {
+      "UPLOADED": "Caricato",
+      "PROCESSING": "In elaborazione",
+      "READY": "Pronto",
+      "FAILED": "Non riuscito"
+    }
+  },
+  "CHAT": {
+    "NEW_CHAT": "Nuova chat",
+    "INPUT_PLACEHOLDER": "Fai una domanda sui tuoi documenti...",
+    "SEND": "Invia",
+    "THINKING": "Sto pensando",
+    "LOADING_MESSAGES": "Caricamento messaggi...",
+    "EMPTY_TITLE": "Inizia una conversazione",
+    "EMPTY_SUBTITLE": "Fai una domanda sui tuoi documenti caricati",
+    "SOURCES": "Fonti",
+    "SIDEBAR": {
+      "NEW_CHAT": "Nuova chat",
+      "LOADING": "Caricamento...",
+      "EMPTY": "Nessuna conversazione",
+      "RENAME": "Rinomina",
+      "DELETE": "Elimina"
+    }
+  },
+  "COMMON": {
+    "SAVE": "Salva",
+    "CANCEL": "Annulla",
+    "DELETE": "Elimina",
+    "EDIT": "Modifica",
+    "CLOSE": "Chiudi",
+    "CONFIRM": "Conferma",
+    "LOADING": "Caricamento...",
+    "ERROR": "Si è verificato un errore",
+    "SUCCESS": "Riuscito",
+    "YES": "Sì",
+    "NO": "No"
+  },
+  "LANGUAGE": {
+    "LABEL": "Lingua",
+    "EN": "English",
+    "DE": "Deutsch",
+    "FR": "Français",
+    "IT": "Italiano"
+  }
+}

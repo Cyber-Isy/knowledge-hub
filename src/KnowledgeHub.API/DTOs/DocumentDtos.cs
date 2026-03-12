@@ -13,3 +13,11 @@ public record DocumentDto
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 }
+
+public record DocumentStatsDto
+{
+    public int TotalDocuments { get; init; }
+    public long TotalStorageBytes { get; init; }
+    public Dictionary<string, int> DocumentsByStatus { get; init; } = new();
+    public List<DocumentDto> RecentUploads { get; init; } = [];
+}

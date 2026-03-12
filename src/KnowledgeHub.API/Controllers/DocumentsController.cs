@@ -1,17 +1,22 @@
 using System.Security.Claims;
+using Asp.Versioning;
 using KnowledgeHub.API.Configuration;
 using KnowledgeHub.API.DTOs;
+using KnowledgeHub.API.Validators;
 using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Interfaces.Repositories;
 using KnowledgeHub.Core.Interfaces.Services;
+using KnowledgeHub.Core.Models;
 using KnowledgeHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace KnowledgeHub.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
 [Authorize]
 public class DocumentsController : ControllerBase
 {
@@ -30,6 +35,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("upload")]
+    [EnableRateLimiting("upload")]
     public async Task<ActionResult<DocumentDto>> Upload(IFormFile file, CancellationToken ct)
     {
         if (file.Length == 0)
@@ -41,6 +47,11 @@ public class DocumentsController : ControllerBase
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!FileUploadSettings.AllowedExtensions.Contains(extension))
             return BadRequest(new { Message = $"File type '{extension}' is not allowed. Allowed: {string.Join(", ", FileUploadSettings.AllowedExtensions)}" });
+
+        // Validate file content by magic bytes
+        await using var validationStream = file.OpenReadStream();
+        if (!FileSignatureValidator.IsValidFileSignature(validationStream, extension))
+            return BadRequest(new { Message = $"File content does not match the expected format for '{extension}'." });
 
         var userId = GetUserId();
 
@@ -63,12 +74,46 @@ public class DocumentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = document.Id }, ToDto(document));
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<DocumentDto>>> GetAll(CancellationToken ct)
+    [HttpGet("stats")]
+    public async Task<ActionResult<DocumentStatsDto>> GetStats(CancellationToken ct)
     {
         var userId = GetUserId();
         var documents = await _documentRepository.GetByUserIdAsync(userId, ct);
-        return Ok(documents.Select(ToDto));
+
+        var stats = new DocumentStatsDto
+        {
+            TotalDocuments = documents.Count,
+            TotalStorageBytes = documents.Sum(d => d.FileSize),
+            DocumentsByStatus = documents
+                .GroupBy(d => d.Status.ToString())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            RecentUploads = documents
+                .OrderByDescending(d => d.CreatedAt)
+                .Take(5)
+                .Select(ToDto)
+                .ToList()
+        };
+
+        return Ok(stats);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<DocumentDto>>> GetAll(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var userId = GetUserId();
+        var pagination = new PaginationParams { Page = page, PageSize = pageSize };
+        var pagedDocuments = await _documentRepository.GetByUserIdPagedAsync(userId, pagination, ct);
+
+        var result = new PagedResult<DocumentDto>
+        {
+            Items = pagedDocuments.Items.Select(ToDto).ToList(),
+            TotalCount = pagedDocuments.TotalCount,
+            Page = pagedDocuments.Page,
+            PageSize = pagedDocuments.PageSize
+        };
+
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]

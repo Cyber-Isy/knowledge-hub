@@ -1,0 +1,111 @@
+{
+  "APP": {
+    "TITLE": "KnowledgeHub"
+  },
+  "HEADER": {
+    "LOGOUT": "Logout"
+  },
+  "SIDEBAR": {
+    "DASHBOARD": "Dashboard",
+    "DOCUMENTS": "Documents",
+    "CHAT": "Chat"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Welcome back",
+      "SUBTITLE": "Sign in to KnowledgeHub",
+      "EMAIL_LABEL": "Email",
+      "EMAIL_PLACEHOLDER": "you@example.com",
+      "PASSWORD_LABEL": "Password",
+      "PASSWORD_PLACEHOLDER": "••••••••",
+      "SUBMIT": "Sign in",
+      "SUBMITTING": "Signing in...",
+      "NO_ACCOUNT": "Don't have an account?",
+      "SIGN_UP": "Sign up",
+      "ERROR_DEFAULT": "Login failed. Please try again."
+    },
+    "REGISTER": {
+      "TITLE": "Create account",
+      "SUBTITLE": "Get started with KnowledgeHub",
+      "DISPLAY_NAME_LABEL": "Display Name",
+      "DISPLAY_NAME_PLACEHOLDER": "John Doe",
+      "EMAIL_LABEL": "Email",
+      "EMAIL_PLACEHOLDER": "you@example.com",
+      "PASSWORD_LABEL": "Password",
+      "PASSWORD_PLACEHOLDER": "Min. 8 characters",
+      "CONFIRM_PASSWORD_LABEL": "Confirm Password",
+      "CONFIRM_PASSWORD_PLACEHOLDER": "Repeat password",
+      "SUBMIT": "Create account",
+      "SUBMITTING": "Creating account...",
+      "HAS_ACCOUNT": "Already have an account?",
+      "SIGN_IN": "Sign in",
+      "PASSWORD_MISMATCH": "Passwords do not match.",
+      "ERROR_DEFAULT": "Registration failed."
+    }
+  },
+  "DASHBOARD": {
+    "TITLE": "Dashboard",
+    "WELCOME": "Welcome",
+    "DOCUMENTS": "Documents",
+    "CONVERSATIONS": "Conversations"
+  },
+  "DOCUMENTS": {
+    "TITLE": "Documents",
+    "UPLOAD_HINT": "Drag & drop files here or click to browse",
+    "UPLOAD_FORMATS": "PDF, DOCX, TXT, MD — Max 10 MB",
+    "UPLOADING": "Uploading...",
+    "LOADING": "Loading documents...",
+    "EMPTY_TITLE": "No documents yet",
+    "EMPTY_SUBTITLE": "Upload your first document to get started",
+    "TABLE": {
+      "NAME": "Name",
+      "SIZE": "Size",
+      "STATUS": "Status",
+      "ACTIONS": "Actions"
+    },
+    "DELETE": "Delete",
+    "STATUS": {
+      "UPLOADED": "Uploaded",
+      "PROCESSING": "Processing",
+      "READY": "Ready",
+      "FAILED": "Failed"
+    }
+  },
+  "CHAT": {
+    "NEW_CHAT": "New Chat",
+    "INPUT_PLACEHOLDER": "Ask a question about your documents...",
+    "SEND": "Send",
+    "THINKING": "Thinking",
+    "LOADING_MESSAGES": "Loading messages...",
+    "EMPTY_TITLE": "Start a conversation",
+    "EMPTY_SUBTITLE": "Ask a question about your uploaded documents",
+    "SOURCES": "Sources",
+    "SIDEBAR": {
+      "NEW_CHAT": "New Chat",
+      "LOADING": "Loading...",
+      "EMPTY": "No conversations yet",
+      "RENAME": "Rename",
+      "DELETE": "Delete"
+    }
+  },
+  "COMMON": {
+    "SAVE": "Save",
+    "CANCEL": "Cancel",
+    "DELETE": "Delete",
+    "EDIT": "Edit",
+    "CLOSE": "Close",
+    "CONFIRM": "Confirm",
+    "LOADING": "Loading...",
+    "ERROR": "An error occurred",
+    "SUCCESS": "Success",
+    "YES": "Yes",
+    "NO": "No"
+  },
+  "LANGUAGE": {
+    "LABEL": "Language",
+    "EN": "English",
+    "DE": "Deutsch",
+    "FR": "Français",
+    "IT": "Italiano"
+  }
+}

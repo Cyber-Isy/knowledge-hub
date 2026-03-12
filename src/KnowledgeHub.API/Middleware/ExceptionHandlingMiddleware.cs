@@ -23,33 +23,49 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception occurred");
-            await HandleExceptionAsync(context, ex);
+            var (statusCode, title) = ex switch
+            {
+                ArgumentException => (HttpStatusCode.BadRequest, "Bad Request"),
+                UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized"),
+                FileNotFoundException => (HttpStatusCode.NotFound, "Not Found"),
+                KeyNotFoundException => (HttpStatusCode.NotFound, "Not Found"),
+                InvalidOperationException => (HttpStatusCode.Conflict, "Conflict"),
+                OperationCanceledException => (HttpStatusCode.BadRequest, "Request Cancelled"),
+                _ => (HttpStatusCode.InternalServerError, "Internal Server Error")
+            };
+
+            _logger.LogError(
+                ex,
+                "Unhandled exception on {Method} {Path} — Status: {StatusCode} Type: {ExceptionType}",
+                context.Request.Method,
+                context.Request.Path,
+                (int)statusCode,
+                ex.GetType().Name);
+
+            await HandleExceptionAsync(context, ex, statusCode, title);
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task HandleExceptionAsync(
+        HttpContext context, Exception exception, HttpStatusCode statusCode, string title)
     {
-        var (statusCode, title) = exception switch
-        {
-            ArgumentException => (HttpStatusCode.BadRequest, "Bad Request"),
-            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized"),
-            FileNotFoundException => (HttpStatusCode.NotFound, "Not Found"),
-            KeyNotFoundException => (HttpStatusCode.NotFound, "Not Found"),
-            _ => (HttpStatusCode.InternalServerError, "Internal Server Error")
-        };
-
         var problemDetails = new ProblemDetails
         {
             Status = (int)statusCode,
             Title = title,
-            Detail = exception.Message,
-            Instance = context.Request.Path
+            Detail = statusCode == HttpStatusCode.InternalServerError
+                ? "An unexpected error occurred. Please try again later."
+                : exception.Message,
+            Instance = context.Request.Path,
+            Type = $"https://httpstatuses.com/{(int)statusCode}"
         };
+
+        problemDetails.Extensions["traceId"] = context.TraceIdentifier;
 
         context.Response.StatusCode = (int)statusCode;
         context.Response.ContentType = "application/problem+json";
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails));
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails, options));
     }
 }

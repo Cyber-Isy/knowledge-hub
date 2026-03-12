@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Enums;
 using KnowledgeHub.Core.Interfaces.Repositories;
@@ -45,11 +46,15 @@ public class DocumentProcessingService : IDocumentProcessingService
 
         try
         {
+            var totalStopwatch = Stopwatch.StartNew();
+
             // Stage 1: Extract text
             await UpdateStatusAsync(document, DocumentStatus.Processing, ct);
+            var extractStopwatch = Stopwatch.StartNew();
             var extractor = _extractorFactory.GetExtractor(document.ContentType);
             await using var fileStream = await _fileStorageService.GetFileAsync(document.StoragePath!, ct);
             var text = await extractor.ExtractTextAsync(fileStream, ct);
+            extractStopwatch.Stop();
 
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -57,7 +62,8 @@ public class DocumentProcessingService : IDocumentProcessingService
                 return;
             }
 
-            _logger.LogInformation("Extracted {Length} characters from document {DocumentId}", text.Length, documentId);
+            _logger.LogInformation("Extracted {Length} characters from document {DocumentId} in {ElapsedMs}ms",
+                text.Length, documentId, extractStopwatch.ElapsedMilliseconds);
 
             // Stage 2: Chunk text
             await UpdateStatusAsync(document, DocumentStatus.Chunking, ct);
@@ -83,25 +89,35 @@ public class DocumentProcessingService : IDocumentProcessingService
 
             // Stage 3: Generate embeddings
             await UpdateStatusAsync(document, DocumentStatus.Embedding, ct);
+            var embeddingStopwatch = Stopwatch.StartNew();
             var chunkTexts = chunks.Select(c => c.Content).ToList();
             var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunkTexts, ct);
+            embeddingStopwatch.Stop();
 
-            _logger.LogInformation("Generated {Count} embeddings for document {DocumentId}", embeddings.Count, documentId);
+            _logger.LogInformation("Generated {Count} embeddings for document {DocumentId} in {ElapsedMs}ms",
+                embeddings.Count, documentId, embeddingStopwatch.ElapsedMilliseconds);
 
             // Stage 4: Index in vector store
             await UpdateStatusAsync(document, DocumentStatus.Indexing, ct);
+            var indexStopwatch = Stopwatch.StartNew();
             for (var i = 0; i < chunks.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
                 await _vectorSearchService.IndexChunkAsync(chunks[i], embeddings[i], ct);
                 chunks[i].EmbeddingId = chunks[i].Id.ToString();
             }
+            indexStopwatch.Stop();
+
+            _logger.LogInformation("Indexed {Count} chunks for document {DocumentId} in {ElapsedMs}ms",
+                chunks.Count, documentId, indexStopwatch.ElapsedMilliseconds);
 
             // Save chunks to database
             document.Chunks = chunks;
             await UpdateStatusAsync(document, DocumentStatus.Ready, ct);
 
-            _logger.LogInformation("Document {DocumentId} processing completed successfully", documentId);
+            totalStopwatch.Stop();
+            _logger.LogInformation("Document {DocumentId} processing completed successfully in {TotalElapsedMs}ms",
+                documentId, totalStopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException)
         {

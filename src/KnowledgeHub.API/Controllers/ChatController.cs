@@ -1,25 +1,35 @@
 using System.Security.Claims;
+using Asp.Versioning;
 using KnowledgeHub.API.DTOs;
 using KnowledgeHub.Core.Entities;
 using KnowledgeHub.Core.Interfaces.Repositories;
 using KnowledgeHub.Core.Interfaces.Services;
+using KnowledgeHub.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace KnowledgeHub.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
 [Authorize]
+[EnableRateLimiting("chat")]
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
     private readonly IRepository<Message> _messageRepository;
+    private readonly IRepository<Conversation> _conversationRepository;
 
-    public ChatController(IChatService chatService, IRepository<Message> messageRepository)
+    public ChatController(
+        IChatService chatService,
+        IRepository<Message> messageRepository,
+        IRepository<Conversation> conversationRepository)
     {
         _chatService = chatService;
         _messageRepository = messageRepository;
+        _conversationRepository = conversationRepository;
     }
 
     [HttpPost("conversations")]
@@ -32,11 +42,24 @@ public class ChatController : ControllerBase
     }
 
     [HttpGet("conversations")]
-    public async Task<ActionResult<IEnumerable<ConversationDto>>> GetConversations(CancellationToken ct)
+    public async Task<ActionResult<PagedResult<ConversationDto>>> GetConversations(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        var conversations = await _chatService.GetConversationsAsync(userId, ct);
-        return Ok(conversations.Select(ToDto));
+        var pagination = new PaginationParams { Page = page, PageSize = pageSize };
+
+        var pagedConversations = await _conversationRepository.GetPagedAsync(
+            pagination, c => c.UserId == userId && !c.IsArchived, ct);
+
+        var result = new PagedResult<ConversationDto>
+        {
+            Items = pagedConversations.Items.Select(ToDto).ToList(),
+            TotalCount = pagedConversations.TotalCount,
+            Page = pagedConversations.Page,
+            PageSize = pagedConversations.PageSize
+        };
+
+        return Ok(result);
     }
 
     [HttpGet("conversations/{id:guid}")]
@@ -51,15 +74,27 @@ public class ChatController : ControllerBase
     }
 
     [HttpGet("conversations/{id:guid}/messages")]
-    public async Task<ActionResult<IEnumerable<MessageDto>>> GetMessages(Guid id, CancellationToken ct)
+    public async Task<ActionResult<PagedResult<MessageDto>>> GetMessages(
+        Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
         var userId = GetUserId();
         var conversation = await _chatService.GetConversationAsync(id, userId, ct);
         if (conversation is null)
             return NotFound();
 
-        var messages = await _messageRepository.FindAsync(m => m.ConversationId == id, ct);
-        return Ok(messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto));
+        var pagination = new PaginationParams { Page = page, PageSize = pageSize };
+        var pagedMessages = await _messageRepository.GetPagedAsync(
+            pagination, m => m.ConversationId == id, ct);
+
+        var result = new PagedResult<MessageDto>
+        {
+            Items = pagedMessages.Items.Select(ToMessageDto).ToList(),
+            TotalCount = pagedMessages.TotalCount,
+            Page = pagedMessages.Page,
+            PageSize = pagedMessages.PageSize
+        };
+
+        return Ok(result);
     }
 
     [HttpPost("conversations/{conversationId:guid}/messages")]

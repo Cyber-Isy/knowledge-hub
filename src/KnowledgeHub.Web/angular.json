@@ -93,6 +93,13 @@
           "options": {
             "proxyConfig": "proxy.conf.json"
           }
+        },
+        "test": {
+          "builder": "@analogjs/vitest-angular:test",
+          "options": {
+            "config": "vitest.config.ts",
+            "tsConfig": "tsconfig.spec.json"
+          }
         }
       }
     }

@@ -1,0 +1,111 @@
+{
+  "APP": {
+    "TITLE": "KnowledgeHub"
+  },
+  "HEADER": {
+    "LOGOUT": "Déconnexion"
+  },
+  "SIDEBAR": {
+    "DASHBOARD": "Tableau de bord",
+    "DOCUMENTS": "Documents",
+    "CHAT": "Chat"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Bienvenue",
+      "SUBTITLE": "Connectez-vous à KnowledgeHub",
+      "EMAIL_LABEL": "E-mail",
+      "EMAIL_PLACEHOLDER": "vous@exemple.com",
+      "PASSWORD_LABEL": "Mot de passe",
+      "PASSWORD_PLACEHOLDER": "••••••••",
+      "SUBMIT": "Se connecter",
+      "SUBMITTING": "Connexion en cours...",
+      "NO_ACCOUNT": "Vous n'avez pas de compte ?",
+      "SIGN_UP": "S'inscrire",
+      "ERROR_DEFAULT": "Échec de la connexion. Veuillez réessayer."
+    },
+    "REGISTER": {
+      "TITLE": "Créer un compte",
+      "SUBTITLE": "Commencez avec KnowledgeHub",
+      "DISPLAY_NAME_LABEL": "Nom d'affichage",
+      "DISPLAY_NAME_PLACEHOLDER": "Jean Dupont",
+      "EMAIL_LABEL": "E-mail",
+      "EMAIL_PLACEHOLDER": "vous@exemple.com",
+      "PASSWORD_LABEL": "Mot de passe",
+      "PASSWORD_PLACEHOLDER": "Min. 8 caractères",
+      "CONFIRM_PASSWORD_LABEL": "Confirmer le mot de passe",
+      "CONFIRM_PASSWORD_PLACEHOLDER": "Répéter le mot de passe",
+      "SUBMIT": "Créer un compte",
+      "SUBMITTING": "Création du compte...",
+      "HAS_ACCOUNT": "Vous avez déjà un compte ?",
+      "SIGN_IN": "Se connecter",
+      "PASSWORD_MISMATCH": "Les mots de passe ne correspondent pas.",
+      "ERROR_DEFAULT": "Échec de l'inscription."
+    }
+  },
+  "DASHBOARD": {
+    "TITLE": "Tableau de bord",
+    "WELCOME": "Bienvenue",
+    "DOCUMENTS": "Documents",
+    "CONVERSATIONS": "Conversations"
+  },
+  "DOCUMENTS": {
+    "TITLE": "Documents",
+    "UPLOAD_HINT": "Glissez-déposez des fichiers ici ou cliquez pour parcourir",
+    "UPLOAD_FORMATS": "PDF, DOCX, TXT, MD — Max 10 Mo",
+    "UPLOADING": "Téléchargement en cours...",
+    "LOADING": "Chargement des documents...",
+    "EMPTY_TITLE": "Aucun document",
+    "EMPTY_SUBTITLE": "Téléchargez votre premier document pour commencer",
+    "TABLE": {
+      "NAME": "Nom",
+      "SIZE": "Taille",
+      "STATUS": "Statut",
+      "ACTIONS": "Actions"
+    },
+    "DELETE": "Supprimer",
+    "STATUS": {
+      "UPLOADED": "Téléchargé",
+      "PROCESSING": "En cours",
+      "READY": "Prêt",
+      "FAILED": "Échoué"
+    }
+  },
+  "CHAT": {
+    "NEW_CHAT": "Nouveau chat",
+    "INPUT_PLACEHOLDER": "Posez une question sur vos documents...",
+    "SEND": "Envoyer",
+    "THINKING": "Réflexion",
+    "LOADING_MESSAGES": "Chargement des messages...",
+    "EMPTY_TITLE": "Commencer une conversation",
+    "EMPTY_SUBTITLE": "Posez une question sur vos documents téléchargés",
+    "SOURCES": "Sources",
+    "SIDEBAR": {
+      "NEW_CHAT": "Nouveau chat",
+      "LOADING": "Chargement...",
+      "EMPTY": "Aucune conversation",
+      "RENAME": "Renommer",
+      "DELETE": "Supprimer"
+    }
+  },
+  "COMMON": {
+    "SAVE": "Enregistrer",
+    "CANCEL": "Annuler",
+    "DELETE": "Supprimer",
+    "EDIT": "Modifier",
+    "CLOSE": "Fermer",
+    "CONFIRM": "Confirmer",
+    "LOADING": "Chargement...",
+    "ERROR": "Une erreur est survenue",
+    "SUCCESS": "Succès",
+    "YES": "Oui",
+    "NO": "Non"
+  },
+  "LANGUAGE": {
+    "LABEL": "Langue",
+    "EN": "English",
+    "DE": "Deutsch",
+    "FR": "Français",
+    "IT": "Italiano"
+  }
+}
