@@ -1,8 +1,10 @@
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using Azure.Storage.Blobs;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using KnowledgeHub.API.Configuration;
@@ -24,10 +26,28 @@ namespace KnowledgeHub.API.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
+        {
+            if (environment.IsDevelopment())
+            {
+                options.UseSqlite(connectionString);
+            }
+            else
+            {
+                options.UseSqlServer(connectionString, sqlOptions =>
+                {
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null);
+                });
+            }
+        });
 
         return services;
     }
@@ -124,17 +144,43 @@ public static class ServiceCollectionExtensions
                     { schemeRef, new List<string>() }
                 };
             });
+
+            // Include XML comments in Swagger if available
+            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (File.Exists(xmlPath))
+            {
+                options.IncludeXmlComments(xmlPath);
+            }
         });
 
         return services;
     }
 
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         // Repositories
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IDocumentRepository, DocumentRepository>();
-        services.AddSingleton<IFileStorageService>(new LocalFileStorageService("uploads"));
+
+        // Data seeding
+        services.AddScoped<IDataSeeder, DataSeeder>();
+
+        // File storage: local disk in Development/Testing, Azure Blob Storage in Production
+        var blobConnectionString = configuration["AzureBlobStorage:ConnectionString"];
+        if (environment.IsDevelopment() || string.IsNullOrEmpty(blobConnectionString))
+        {
+            services.AddSingleton<IFileStorageService>(new LocalFileStorageService("uploads"));
+        }
+        else
+        {
+            var containerName = configuration["AzureBlobStorage:ContainerName"] ?? "documents";
+            services.AddSingleton(new BlobServiceClient(blobConnectionString));
+            services.AddSingleton<IFileStorageService>(sp =>
+                new AzureBlobStorageService(
+                    sp.GetRequiredService<BlobServiceClient>(),
+                    containerName));
+        }
 
         // Text extraction
         services.AddSingleton<IDocumentTextExtractor, PdfTextExtractor>();
@@ -193,13 +239,16 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCorsPolicies(this IServiceCollection services)
+    public static IServiceCollection AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAngular", policy =>
             {
-                policy.WithOrigins("http://localhost:4200")
+                var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? ["http://localhost:4200"];
+
+                policy.WithOrigins(origins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();

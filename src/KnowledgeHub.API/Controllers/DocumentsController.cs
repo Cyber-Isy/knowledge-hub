@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace KnowledgeHub.API.Controllers;
 
+/// <summary>
+/// Manages document upload, retrieval, download, and deletion.
+/// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
@@ -34,8 +37,22 @@ public class DocumentsController : ControllerBase
         _backgroundService = backgroundService;
     }
 
+    /// <summary>
+    /// Uploads a document for processing into the knowledge base.
+    /// </summary>
+    /// <param name="file">The file to upload (PDF, DOCX, TXT, or MD).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The created document metadata.</returns>
+    /// <response code="201">Document uploaded successfully and queued for processing.</response>
+    /// <response code="400">File is empty, exceeds size limit, or has an unsupported format.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="429">Upload rate limit exceeded.</response>
     [HttpPost("upload")]
     [EnableRateLimiting("upload")]
+    [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<DocumentDto>> Upload(IFormFile file, CancellationToken ct)
     {
         if (file.Length == 0)
@@ -74,7 +91,16 @@ public class DocumentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = document.Id }, ToDto(document));
     }
 
+    /// <summary>
+    /// Returns document statistics for the current user.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Aggregate statistics including document counts by status and recent uploads.</returns>
+    /// <response code="200">Returns the document statistics.</response>
+    /// <response code="401">The request is not authenticated.</response>
     [HttpGet("stats")]
+    [ProducesResponseType(typeof(DocumentStatsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<DocumentStatsDto>> GetStats(CancellationToken ct)
     {
         var userId = GetUserId();
@@ -97,7 +123,18 @@ public class DocumentsController : ControllerBase
         return Ok(stats);
     }
 
+    /// <summary>
+    /// Returns a paginated list of documents for the current user.
+    /// </summary>
+    /// <param name="page">Page number (1-based). Defaults to 1.</param>
+    /// <param name="pageSize">Number of items per page. Defaults to 20.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A paginated list of documents.</returns>
+    /// <response code="200">Returns the paginated document list.</response>
+    /// <response code="401">The request is not authenticated.</response>
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<DocumentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<PagedResult<DocumentDto>>> GetAll(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
@@ -116,7 +153,19 @@ public class DocumentsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns a single document by its unique identifier.
+    /// </summary>
+    /// <param name="id">The document ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The document metadata.</returns>
+    /// <response code="200">Returns the document.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="404">Document not found or does not belong to the current user.</response>
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DocumentDto>> GetById(Guid id, CancellationToken ct)
     {
         var document = await _documentRepository.GetByIdAsync(id, ct);
@@ -126,7 +175,19 @@ public class DocumentsController : ControllerBase
         return Ok(ToDto(document));
     }
 
+    /// <summary>
+    /// Downloads the original file for a document.
+    /// </summary>
+    /// <param name="id">The document ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The file content as a binary stream.</returns>
+    /// <response code="200">Returns the file content.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="404">Document not found or file is unavailable.</response>
     [HttpGet("{id:guid}/download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {
         var document = await _documentRepository.GetByIdAsync(id, ct);
@@ -140,7 +201,19 @@ public class DocumentsController : ControllerBase
         return File(stream, document.ContentType, document.FileName);
     }
 
+    /// <summary>
+    /// Deletes a document and its associated file from storage.
+    /// </summary>
+    /// <param name="id">The document ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content on success.</returns>
+    /// <response code="204">Document deleted successfully.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="404">Document not found or does not belong to the current user.</response>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var document = await _documentRepository.GetByIdAsync(id, ct);

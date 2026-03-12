@@ -1,6 +1,7 @@
 using KnowledgeHub.API.Extensions;
 using KnowledgeHub.API.Hubs;
 using KnowledgeHub.API.Middleware;
+using KnowledgeHub.Core.Interfaces.Services;
 using KnowledgeHub.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,12 +25,12 @@ try
     // Add services
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddDatabase(builder.Configuration);
+    builder.Services.AddDatabase(builder.Configuration, builder.Environment);
     builder.Services.AddIdentityServices();
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddSwaggerDocumentation();
-    builder.Services.AddApplicationServices(builder.Configuration);
-    builder.Services.AddCorsPolicies();
+    builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
+    builder.Services.AddCorsPolicies(builder.Configuration);
     builder.Services.AddFluentValidationServices();
     builder.Services.AddRateLimitingPolicies();
     builder.Services.AddApiVersioningServices();
@@ -58,7 +59,16 @@ try
         }
     }
 
+    // Seed demo data in development
+    if (app.Environment.IsDevelopment())
+    {
+        using var scope = app.Services.CreateScope();
+        var seeder = scope.ServiceProvider.GetRequiredService<IDataSeeder>();
+        await seeder.SeedAsync();
+    }
+
     // Middleware pipeline
+    app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<RequestLoggingMiddleware>();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -67,6 +77,10 @@ try
     {
         app.UseSwagger();
         app.UseSwaggerUI();
+    }
+    else
+    {
+        app.UseHsts();
     }
 
     app.UseHttpsRedirection();

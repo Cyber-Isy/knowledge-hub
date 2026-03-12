@@ -14,6 +14,9 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace KnowledgeHub.API.Controllers;
 
+/// <summary>
+/// Handles user authentication and registration.
+/// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
@@ -34,7 +37,16 @@ public class AuthController : ControllerBase
         _jwtSettings = jwtSettings.Value;
     }
 
+    /// <summary>
+    /// Registers a new user account.
+    /// </summary>
+    /// <param name="request">The registration details including email, password, and optional display name.</param>
+    /// <returns>A JWT token and user information upon successful registration.</returns>
+    /// <response code="200">Registration successful. Returns the authentication token.</response>
+    /// <response code="400">Validation failed or the email is already in use.</response>
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
         var user = new ApplicationUser
@@ -53,7 +65,16 @@ public class AuthController : ControllerBase
         return Ok(await GenerateAuthResponse(user));
     }
 
+    /// <summary>
+    /// Authenticates a user and returns a JWT token.
+    /// </summary>
+    /// <param name="request">The login credentials (email and password).</param>
+    /// <returns>A JWT token and user information upon successful authentication.</returns>
+    /// <response code="200">Login successful. Returns the authentication token.</response>
+    /// <response code="401">Invalid email or password.</response>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
@@ -67,8 +88,18 @@ public class AuthController : ControllerBase
         return Ok(await GenerateAuthResponse(user));
     }
 
+    /// <summary>
+    /// Returns the profile of the currently authenticated user.
+    /// </summary>
+    /// <returns>The user's profile information including roles.</returns>
+    /// <response code="200">Returns the current user's profile.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="404">The user account was not found.</response>
     [Authorize]
     [HttpGet("me")]
+    [ProducesResponseType(typeof(UserInfoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserInfoResponse>> GetCurrentUser()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
