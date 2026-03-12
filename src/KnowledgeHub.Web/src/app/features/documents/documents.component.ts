@@ -27,7 +27,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
         </svg>
         <p class="text-[var(--color-text-secondary)] mb-2">{{ 'DOCUMENTS.UPLOAD_HINT' | translate }}</p>
         <p class="text-sm text-[var(--color-text-secondary)] opacity-70">{{ 'DOCUMENTS.UPLOAD_FORMATS' | translate }}</p>
-        <input #fileInput type="file" class="hidden" accept=".pdf,.docx,.txt,.md" (change)="onFileSelected($event)" />
+        <input #fileInput type="file" class="hidden" accept=".pdf,.docx,.txt,.md" multiple (change)="onFileSelected($event)" />
       </div>
 
       @if (isUploading) {
@@ -109,8 +109,9 @@ export class DocumentsComponent implements OnInit {
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files?.[0]) {
-      this.uploadFile(input.files[0]);
+    if (input.files && input.files.length > 0) {
+      this.uploadFiles(Array.from(input.files));
+      input.value = '';
     }
   }
 
@@ -122,22 +123,46 @@ export class DocumentsComponent implements OnInit {
   onDrop(event: DragEvent) {
     event.preventDefault();
     event.stopPropagation();
-    if (event.dataTransfer?.files[0]) {
-      this.uploadFile(event.dataTransfer.files[0]);
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      this.uploadFiles(Array.from(event.dataTransfer.files));
     }
   }
 
-  private uploadFile(file: File) {
+  private uploadFiles(files: File[]) {
+    if (files.length === 1) {
+      this.isUploading = true;
+      this.docService.upload(files[0]).subscribe({
+        next: () => {
+          this.isUploading = false;
+          this.notificationService.success(`"${files[0].name}" uploaded successfully.`);
+          this.docService.loadDocuments();
+        },
+        error: (err) => {
+          this.isUploading = false;
+          this.notificationService.error(err.error?.message || 'Upload failed.');
+        },
+      });
+      return;
+    }
+
     this.isUploading = true;
-    this.docService.upload(file).subscribe({
-      next: () => {
+    this.docService.uploadMultiple(files).subscribe({
+      next: (result) => {
         this.isUploading = false;
-        this.notificationService.success(`"${file.name}" uploaded successfully.`);
+        if (result.succeeded.length > 0) {
+          this.notificationService.success(
+            `${result.succeeded.length} of ${files.length} file(s) uploaded successfully.`,
+          );
+        }
+        if (result.failed.length > 0) {
+          const names = result.failed.map((f) => f.fileName).join(', ');
+          this.notificationService.error(`Failed to upload: ${names}`);
+        }
         this.docService.loadDocuments();
       },
       error: (err) => {
         this.isUploading = false;
-        this.notificationService.error(err.error?.message || 'Upload failed.');
+        this.notificationService.error(err.error?.message || 'Batch upload failed.');
       },
     });
   }

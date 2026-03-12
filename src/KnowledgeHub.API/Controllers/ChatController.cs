@@ -138,7 +138,7 @@ public class ChatController : ControllerBase
 
         var result = new PagedResult<MessageDto>
         {
-            Items = pagedMessages.Items.Select(ToMessageDto).ToList(),
+            Items = pagedMessages.Items.OrderBy(m => m.CreatedAt).Select(ToMessageDto).ToList(),
             TotalCount = pagedMessages.TotalCount,
             Page = pagedMessages.Page,
             PageSize = pagedMessages.PageSize

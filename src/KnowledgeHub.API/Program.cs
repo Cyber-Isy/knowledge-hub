@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using KnowledgeHub.API.Extensions;
 using KnowledgeHub.API.Hubs;
 using KnowledgeHub.API.Middleware;
@@ -23,7 +25,11 @@ try
     builder.Host.UseSerilog();
 
     // Add services
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddDatabase(builder.Configuration, builder.Environment);
     builder.Services.AddIdentityServices();

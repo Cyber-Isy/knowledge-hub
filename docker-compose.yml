@@ -8,6 +8,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Data Source=/data/knowledgehub.db
+      - Ollama__Enabled=true
+      - Ollama__BaseUrl=http://host.docker.internal:11434
+      - Ollama__ChatModel=llama3.1:8b
+      - Ollama__EmbeddingModel=nomic-embed-text
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - api-data:/data
       - api-uploads:/app/uploads

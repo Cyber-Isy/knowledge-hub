@@ -21,6 +21,11 @@ export interface DocumentStats {
   recentUploads: Document[];
 }
 
+export interface BatchUploadResult {
+  succeeded: Document[];
+  failed: { fileName: string; error: string }[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
   private readonly baseUrl = `${environment.apiUrl}/v1/documents`;
@@ -49,6 +54,17 @@ export class DocumentService {
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post<Document>(`${this.baseUrl}/upload`, formData);
+  }
+
+  uploadMultiple(files: File[]) {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    return this.http.post<BatchUploadResult>(
+      `${this.baseUrl}/upload-batch`,
+      formData,
+    );
   }
 
   delete(id: string) {

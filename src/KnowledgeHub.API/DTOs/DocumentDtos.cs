@@ -14,6 +14,18 @@ public record DocumentDto
     public DateTime UpdatedAt { get; init; }
 }
 
+public record BatchUploadResultDto
+{
+    public List<DocumentDto> Succeeded { get; init; } = [];
+    public List<BatchUploadErrorDto> Failed { get; init; } = [];
+}
+
+public record BatchUploadErrorDto
+{
+    public required string FileName { get; init; }
+    public required string Error { get; init; }
+}
+
 public record DocumentStatsDto
 {
     public int TotalDocuments { get; init; }

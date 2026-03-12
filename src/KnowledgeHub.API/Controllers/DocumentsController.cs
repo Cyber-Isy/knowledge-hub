@@ -55,20 +55,9 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<DocumentDto>> Upload(IFormFile file, CancellationToken ct)
     {
-        if (file.Length == 0)
-            return BadRequest(new { Message = "File is empty." });
-
-        if (file.Length > FileUploadSettings.MaxFileSizeBytes)
-            return BadRequest(new { Message = $"File exceeds the maximum size of {FileUploadSettings.MaxFileSizeBytes / (1024 * 1024)} MB." });
-
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!FileUploadSettings.AllowedExtensions.Contains(extension))
-            return BadRequest(new { Message = $"File type '{extension}' is not allowed. Allowed: {string.Join(", ", FileUploadSettings.AllowedExtensions)}" });
-
-        // Validate file content by magic bytes
-        await using var validationStream = file.OpenReadStream();
-        if (!FileSignatureValidator.IsValidFileSignature(validationStream, extension))
-            return BadRequest(new { Message = $"File content does not match the expected format for '{extension}'." });
+        var error = await ValidateFile(file);
+        if (error is not null)
+            return BadRequest(new { Message = error });
 
         var userId = GetUserId();
 
@@ -89,6 +78,63 @@ public class DocumentsController : ControllerBase
         await _backgroundService.EnqueueAsync(document.Id, ct);
 
         return CreatedAtAction(nameof(GetById), new { id = document.Id }, ToDto(document));
+    }
+
+    /// <summary>
+    /// Uploads multiple documents for processing into the knowledge base.
+    /// </summary>
+    /// <param name="files">The files to upload (PDF, DOCX, TXT, or MD). Maximum 10 files per batch.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Results for each file indicating success or failure.</returns>
+    /// <response code="200">Batch upload completed. Check individual results for per-file status.</response>
+    /// <response code="400">No files provided or batch size exceeded.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="429">Upload rate limit exceeded.</response>
+    [HttpPost("upload-batch")]
+    [EnableRateLimiting("upload")]
+    [ProducesResponseType(typeof(BatchUploadResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<BatchUploadResultDto>> UploadBatch(List<IFormFile> files, CancellationToken ct)
+    {
+        if (files is null || files.Count == 0)
+            return BadRequest(new { Message = "No files provided." });
+
+        if (files.Count > 10)
+            return BadRequest(new { Message = "Maximum 10 files per batch upload." });
+
+        var userId = GetUserId();
+        var result = new BatchUploadResultDto();
+
+        foreach (var file in files)
+        {
+            var error = await ValidateFile(file);
+            if (error is not null)
+            {
+                result.Failed.Add(new BatchUploadErrorDto { FileName = file.FileName, Error = error });
+                continue;
+            }
+
+            await using var stream = file.OpenReadStream();
+            var storagePath = await _fileStorageService.SaveFileAsync(stream, file.FileName, file.ContentType, ct);
+
+            var document = new Document
+            {
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                FileSize = file.Length,
+                StoragePath = storagePath,
+                UserId = userId
+            };
+
+            await _documentRepository.AddAsync(document, ct);
+            await _backgroundService.EnqueueAsync(document.Id, ct);
+
+            result.Succeeded.Add(ToDto(document));
+        }
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -229,6 +275,25 @@ public class DocumentsController : ControllerBase
 
     private Guid GetUserId()
         => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private static async Task<string?> ValidateFile(IFormFile file)
+    {
+        if (file.Length == 0)
+            return "File is empty.";
+
+        if (file.Length > FileUploadSettings.MaxFileSizeBytes)
+            return $"File exceeds the maximum size of {FileUploadSettings.MaxFileSizeBytes / (1024 * 1024)} MB.";
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadSettings.AllowedExtensions.Contains(extension))
+            return $"File type '{extension}' is not allowed. Allowed: {string.Join(", ", FileUploadSettings.AllowedExtensions)}";
+
+        await using var validationStream = file.OpenReadStream();
+        if (!FileSignatureValidator.IsValidFileSignature(validationStream, extension))
+            return $"File content does not match the expected format for '{extension}'.";
+
+        return null;
+    }
 
     private static DocumentDto ToDto(Document document) => new()
     {

@@ -118,7 +118,7 @@ public class DocumentIntegrationTests
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    private record DocumentData(Guid Id, string FileName, string ContentType, long FileSize, int Status,
+    private record DocumentData(Guid Id, string FileName, string ContentType, long FileSize, string Status,
         string? ErrorMessage, DateTime CreatedAt, DateTime UpdatedAt);
     private record PagedDocumentResult(List<DocumentData> Items, int TotalCount, int Page, int PageSize);
 }

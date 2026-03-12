@@ -1,5 +1,9 @@
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Azure;
 using Azure.AI.OpenAI;
 using KnowledgeHub.Core.Configuration;
@@ -23,7 +27,8 @@ public class ChatHub : Hub
     private readonly IRepository<Message> _messageRepository;
     private readonly IRepository<MessageSource> _messageSourceRepository;
     private readonly ChatSettings _settings;
-    private readonly ChatClient _chatClient;
+    private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory? _httpClientFactory;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
@@ -34,7 +39,8 @@ public class ChatHub : Hub
         IRepository<MessageSource> messageSourceRepository,
         IOptions<ChatSettings> settings,
         IConfiguration configuration,
-        ILogger<ChatHub> logger)
+        ILogger<ChatHub> logger,
+        IHttpClientFactory? httpClientFactory = null)
     {
         _embeddingService = embeddingService;
         _vectorSearchService = vectorSearchService;
@@ -42,17 +48,9 @@ public class ChatHub : Hub
         _messageRepository = messageRepository;
         _messageSourceRepository = messageSourceRepository;
         _settings = settings.Value;
+        _configuration = configuration;
         _logger = logger;
-
-        var azureOpenAI = configuration.GetSection("AzureOpenAI");
-        var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
-        var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
-        var chatDeployment = azureOpenAI["ChatDeploymentName"] ?? "gpt-4o";
-
-        var azureClient = new AzureOpenAIClient(
-            new Uri(endpoint),
-            new AzureKeyCredential(apiKey));
-        _chatClient = azureClient.GetChatClient(chatDeployment);
+        _httpClientFactory = httpClientFactory;
     }
 
     public async IAsyncEnumerable<string> StreamMessage(
@@ -90,18 +88,27 @@ public class ChatHub : Hub
             s.Score
         }), cancellationToken);
 
-        // Build chat messages
-        var chatMessages = BuildChatMessages(content, searchResults);
+        // Build system prompt with context
+        var systemPrompt = BuildSystemPrompt(searchResults);
 
-        // Stream the response
-        var fullResponse = new System.Text.StringBuilder();
+        // Stream from the appropriate provider
+        var fullResponse = new StringBuilder();
+        var useOllama = _configuration.GetValue<bool>("Ollama:Enabled");
 
-        await foreach (var update in _chatClient.CompleteChatStreamingAsync(chatMessages, cancellationToken: cancellationToken))
+        if (useOllama)
         {
-            foreach (var part in update.ContentUpdate)
+            await foreach (var token in StreamFromOllamaAsync(systemPrompt, content, cancellationToken))
             {
-                fullResponse.Append(part.Text);
-                yield return part.Text;
+                fullResponse.Append(token);
+                yield return token;
+            }
+        }
+        else
+        {
+            await foreach (var token in StreamFromAzureAsync(systemPrompt, content, cancellationToken))
+            {
+                fullResponse.Append(token);
+                yield return token;
             }
         }
 
@@ -140,6 +147,81 @@ public class ChatHub : Hub
             "Streamed response for conversation {ConversationId}", conversationId);
     }
 
+    private async IAsyncEnumerable<string> StreamFromOllamaAsync(
+        string systemPrompt,
+        string userContent,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var ollamaModel = _configuration["Ollama:ChatModel"] ?? "llama3.1:8b";
+        var ollamaBaseUrl = _configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
+
+        var httpClient = _httpClientFactory?.CreateClient("Ollama")
+            ?? new HttpClient { BaseAddress = new Uri(ollamaBaseUrl), Timeout = TimeSpan.FromMinutes(5) };
+
+        var request = new
+        {
+            model = ollamaModel,
+            stream = true,
+            messages = new[]
+            {
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = userContent }
+            }
+        };
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        var response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (string.IsNullOrEmpty(line)) continue;
+
+            var chunk = JsonSerializer.Deserialize<OllamaStreamChunk>(line);
+            if (chunk?.Done == true) break;
+            if (chunk?.Message?.Content is not null)
+            {
+                yield return chunk.Message.Content;
+            }
+        }
+    }
+
+    private async IAsyncEnumerable<string> StreamFromAzureAsync(
+        string systemPrompt,
+        string userContent,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var azureOpenAI = _configuration.GetSection("AzureOpenAI");
+        var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
+        var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
+        var chatDeployment = azureOpenAI["ChatDeploymentName"] ?? "gpt-4o";
+
+        var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+        var chatClient = azureClient.GetChatClient(chatDeployment);
+
+        var chatMessages = new List<ChatMessage>
+        {
+            new SystemChatMessage(systemPrompt),
+            new UserChatMessage(userContent)
+        };
+
+        await foreach (var update in chatClient.CompleteChatStreamingAsync(chatMessages, cancellationToken: cancellationToken))
+        {
+            foreach (var part in update.ContentUpdate)
+            {
+                yield return part.Text;
+            }
+        }
+    }
+
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserId();
@@ -157,34 +239,45 @@ public class ChatHub : Hub
     private Guid GetUserId()
         => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private List<ChatMessage> BuildChatMessages(string userQuery, IReadOnlyList<VectorSearchResult> searchResults)
+    private string BuildSystemPrompt(IReadOnlyList<VectorSearchResult> searchResults)
     {
-        var messages = new List<ChatMessage>();
-
-        var contextBuilder = new System.Text.StringBuilder();
-        contextBuilder.AppendLine(_settings.SystemPrompt);
-        contextBuilder.AppendLine();
+        var sb = new StringBuilder();
+        sb.AppendLine(_settings.SystemPrompt);
+        sb.AppendLine();
 
         if (searchResults.Count > 0)
         {
-            contextBuilder.AppendLine("Context from the knowledge base:");
-            contextBuilder.AppendLine("---");
+            sb.AppendLine("Context from the knowledge base:");
+            sb.AppendLine("---");
 
             foreach (var result in searchResults)
             {
-                contextBuilder.AppendLine($"[Source: {result.FileName}]");
-                contextBuilder.AppendLine(result.Content);
-                contextBuilder.AppendLine("---");
+                sb.AppendLine($"[Source: {result.FileName}]");
+                sb.AppendLine(result.Content);
+                sb.AppendLine("---");
             }
         }
         else
         {
-            contextBuilder.AppendLine("No relevant documents were found in the knowledge base for this query.");
+            sb.AppendLine("No relevant documents were found in the knowledge base for this query.");
         }
 
-        messages.Add(new SystemChatMessage(contextBuilder.ToString()));
-        messages.Add(new UserChatMessage(userQuery));
+        return sb.ToString();
+    }
 
-        return messages;
+    // Ollama streaming response models
+    private sealed class OllamaStreamChunk
+    {
+        [JsonPropertyName("message")]
+        public OllamaStreamMessage? Message { get; set; }
+
+        [JsonPropertyName("done")]
+        public bool Done { get; set; }
+    }
+
+    private sealed class OllamaStreamMessage
+    {
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
     }
 }

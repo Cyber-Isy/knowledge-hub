@@ -191,27 +191,56 @@ public static class ServiceCollectionExtensions
         // Text chunking
         services.AddSingleton<ITextChunker, RecursiveTextChunker>();
 
-        // Azure OpenAI Embeddings
-        var azureOpenAI = configuration.GetSection("AzureOpenAI");
-        var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
-        var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
-        var embeddingDeployment = azureOpenAI["EmbeddingDeploymentName"] ?? "text-embedding-3-small";
+        // AI provider: Ollama (development) or Azure OpenAI (production)
+        var useOllama = configuration.GetValue<bool>("Ollama:Enabled");
 
-        services.AddSingleton<IEmbeddingService>(sp =>
-            new AzureOpenAIEmbeddingService(
-                endpoint, apiKey, embeddingDeployment,
-                sp.GetRequiredService<ILogger<AzureOpenAIEmbeddingService>>()));
+        if (useOllama)
+        {
+            // Ollama — local AI (free, no API keys)
+            var ollamaSettings = configuration.GetSection(OllamaSettings.SectionName).Get<OllamaSettings>()
+                ?? new OllamaSettings();
 
-        // Azure AI Search (vector store)
-        var azureSearch = configuration.GetSection("AzureAISearch");
-        var searchEndpoint = azureSearch["Endpoint"] ?? string.Empty;
-        var searchApiKey = azureSearch["ApiKey"] ?? string.Empty;
-        var indexName = azureSearch["IndexName"] ?? "knowledgehub-chunks";
+            services.AddHttpClient("Ollama", client =>
+            {
+                client.BaseAddress = new Uri(ollamaSettings.BaseUrl);
+                client.Timeout = TimeSpan.FromMinutes(5); // LLM responses can be slow
+            });
 
-        services.AddSingleton<IVectorSearchService>(sp =>
-            new AzureAISearchService(
-                searchEndpoint, searchApiKey, indexName,
-                sp.GetRequiredService<ILogger<AzureAISearchService>>()));
+            services.AddSingleton<IEmbeddingService>(sp =>
+                new OllamaEmbeddingService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("Ollama"),
+                    ollamaSettings.EmbeddingModel,
+                    sp.GetRequiredService<ILogger<OllamaEmbeddingService>>()));
+
+            // In-memory vector search (development only)
+            services.AddSingleton<IVectorSearchService>(sp =>
+                new InMemoryVectorSearchService(
+                    sp.GetRequiredService<ILogger<InMemoryVectorSearchService>>()));
+        }
+        else
+        {
+            // Azure OpenAI — production AI
+            var azureOpenAI = configuration.GetSection("AzureOpenAI");
+            var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
+            var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
+            var embeddingDeployment = azureOpenAI["EmbeddingDeploymentName"] ?? "text-embedding-3-small";
+
+            services.AddSingleton<IEmbeddingService>(sp =>
+                new AzureOpenAIEmbeddingService(
+                    endpoint, apiKey, embeddingDeployment,
+                    sp.GetRequiredService<ILogger<AzureOpenAIEmbeddingService>>()));
+
+            // Azure AI Search (vector store)
+            var azureSearch = configuration.GetSection("AzureAISearch");
+            var searchEndpoint = azureSearch["Endpoint"] ?? string.Empty;
+            var searchApiKey = azureSearch["ApiKey"] ?? string.Empty;
+            var indexName = azureSearch["IndexName"] ?? "knowledgehub-chunks";
+
+            services.AddSingleton<IVectorSearchService>(sp =>
+                new AzureAISearchService(
+                    searchEndpoint, searchApiKey, indexName,
+                    sp.GetRequiredService<ILogger<AzureAISearchService>>()));
+        }
 
         // Document processing pipeline
         services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
@@ -221,17 +250,42 @@ public static class ServiceCollectionExtensions
 
         // Chat
         services.Configure<ChatSettings>(configuration.GetSection(ChatSettings.SectionName));
-        var chatDeployment = azureOpenAI["ChatDeploymentName"] ?? "gpt-4o";
-        services.AddScoped<IChatService>(sp =>
-            new ChatService(
-                endpoint, apiKey, chatDeployment,
-                sp.GetRequiredService<IEmbeddingService>(),
-                sp.GetRequiredService<IVectorSearchService>(),
-                sp.GetRequiredService<IRepository<Conversation>>(),
-                sp.GetRequiredService<IRepository<Message>>(),
-                sp.GetRequiredService<IRepository<MessageSource>>(),
-                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatSettings>>(),
-                sp.GetRequiredService<ILogger<ChatService>>()));
+
+        if (useOllama)
+        {
+            var ollamaSettings = configuration.GetSection(OllamaSettings.SectionName).Get<OllamaSettings>()
+                ?? new OllamaSettings();
+
+            services.AddScoped<IChatService>(sp =>
+                new OllamaChatService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("Ollama"),
+                    ollamaSettings.ChatModel,
+                    sp.GetRequiredService<IEmbeddingService>(),
+                    sp.GetRequiredService<IVectorSearchService>(),
+                    sp.GetRequiredService<IRepository<Conversation>>(),
+                    sp.GetRequiredService<IRepository<Message>>(),
+                    sp.GetRequiredService<IRepository<MessageSource>>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatSettings>>(),
+                    sp.GetRequiredService<ILogger<OllamaChatService>>()));
+        }
+        else
+        {
+            var azureOpenAI = configuration.GetSection("AzureOpenAI");
+            var endpoint = azureOpenAI["Endpoint"] ?? string.Empty;
+            var apiKey = azureOpenAI["ApiKey"] ?? string.Empty;
+            var chatDeployment = azureOpenAI["ChatDeploymentName"] ?? "gpt-4o";
+
+            services.AddScoped<IChatService>(sp =>
+                new ChatService(
+                    endpoint, apiKey, chatDeployment,
+                    sp.GetRequiredService<IEmbeddingService>(),
+                    sp.GetRequiredService<IVectorSearchService>(),
+                    sp.GetRequiredService<IRepository<Conversation>>(),
+                    sp.GetRequiredService<IRepository<Message>>(),
+                    sp.GetRequiredService<IRepository<MessageSource>>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatSettings>>(),
+                    sp.GetRequiredService<ILogger<ChatService>>()));
+        }
 
         // SignalR
         services.AddSignalR();
