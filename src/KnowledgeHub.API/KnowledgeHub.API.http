@@ -1,0 +1,6 @@
+@KnowledgeHub.API_HostAddress = http://localhost:5017
+
+GET {{KnowledgeHub.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

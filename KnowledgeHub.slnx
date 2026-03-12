@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KnowledgeHub.API/KnowledgeHub.API.csproj" />
+    <Project Path="src/KnowledgeHub.Core/KnowledgeHub.Core.csproj" />
+    <Project Path="src/KnowledgeHub.Infrastructure/KnowledgeHub.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KnowledgeHub.API.Tests/KnowledgeHub.API.Tests.csproj" />
+    <Project Path="tests/KnowledgeHub.Infrastructure.Tests/KnowledgeHub.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
